@@ -19,3 +19,4 @@ class Tool(ABC):
     @abstractmethod
     def use(self, query: str) -> dict:
         pass
+

@@ -26,8 +26,9 @@ class AnswerAgent:
             # Step 1: Provide Prompt Parameters
             answer_prompt = ANSWER_PROMPT.format(
                 question=self.question,
-                data=self.messages.get("payload", {}),
-                metadata=self.messages.get("metadata", {}),
+                status=self.messages['status'],
+                message=self.messages['response'],
+                context=self.messages['context'],
             )
 
             # Step 2: The prompt for the Agent

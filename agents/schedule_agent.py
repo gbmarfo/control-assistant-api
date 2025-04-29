@@ -7,7 +7,7 @@ from util.language_model import LanguageModel
 from prompts.schedule import SCHEDULE_PROMPT
 from tools.schedule_tool import SCHEDULE_TOOLS
 from util.database import SqlQueryExecutor
-from util import helper
+from util.helper import Helper
 
 # load environment variable
 load_dotenv()
@@ -18,6 +18,7 @@ class ScheduleAgent:
         self.llm = LanguageModel()
         self.schedule = None
         self.message_state = message_state
+        self.memory = []
 
     def process_schedule(self) -> dict:
         """
@@ -30,8 +31,14 @@ class ScheduleAgent:
             # Step 2: The user message
             messages.append({"role": "user", "content": self.question})
 
+            # add use message to the message state
+            self.memory.append({"role": "user", "content": self.question})
+
             # Step 3: Call the LLM to get the schedule information
             response = self.llm.generate_response(messages, SCHEDULE_TOOLS)
+
+            # add the response to the message state
+            self.memory.append({"role": "assistant", "content": response.choices[0].message.content})
 
             # Step 4: Check if the response contains tool calls
             if response.choices[0].message.tool_calls:
@@ -85,20 +92,19 @@ class ScheduleAgent:
                 data = df.to_dict(orient='records')
 
                 # read the metadata file
-                metadata = helper.convert_to_markdown(metadata_file_path)
+                metadata = Helper.convert_to_markdown(metadata_file_path)
 
-                # Step 2: Update the message state with the tool execution result
-                # self.message_state.append({"role": "tool", "name": function_name, "content": json.dumps(data)})
+                # save the data to memory
+                self.memory.append({"role": "tool", "name": function_name, "content": json.dumps(tool_arguments)})
 
-                # Step 2: Return the data as a JSON response
+                 # Concatenate data and metadata as markdown
+                markdown_output = f"### Data\n\n{json.dumps(data, indent=2)}\n\n### Metadata\n\n{metadata}"
+                
                 output = {
-                    "question": self.question,
                     "status": "success",
                     "message": "Tool executed successfully.",
-                    "tool_name": function_name,
-                    "payload": data,
-                    "next_agent": "answer_agent",
-                    "metadata": metadata
+                    "response": markdown_output,
+                    "context": self.memory,
                 }
 
                 return output

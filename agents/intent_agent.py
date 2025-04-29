@@ -18,17 +18,20 @@ class IntentAgent:
         self.llm = LanguageModel()
         self.intent = None
         self.message_state = {}
+        self.memory = []
 
     def process_intent(self) -> dict:
         """
         Process the question to identify the intent and parameters.
         """
         try:
+
             # Step 1: The prompt for the Agent
             messages = [{"role": "system", "content": INTENT_PROMPT}]
 
             # Step 2: The user message
             messages.append({"role": "user", "content": self.question})
+            self.memory.append({"role": "user", "content": self.question})
 
             # Step 3: Call the LLM to get the intent and parameters
             response = self.llm.generate_response(messages, INTENT_TOOLS)
@@ -41,6 +44,7 @@ class IntentAgent:
                 "response": response.choices[0].message.content,
                 "payload": []
             }
+            self.memory.append({"role": "assistant", "content": response.choices[0].message.content})
 
             # Step 5: Store the conversation history
             if "conversations" not in self.message_state:
@@ -78,19 +82,16 @@ class IntentAgent:
                 # process the schedule agent response
                 isProcessing = True
 
+                agent_response: dict = {}
+
                 while isProcessing:
                     if agent == "schedule_agent":
                         # Call the schedule agent with the query
                         schedule_agent = ScheduleAgent(query, self.message_state)
                         agent_response = schedule_agent.process_schedule()
 
-                        print("Schedule Agent Response: ", agent_response)
-
-                        if agent_response["status"] == "success":
-                            agent = agent_response["next_agent"]
-                        elif agent_response["status"] == "error":
-                            agent = "answer_agent"
-                        continue
+                        # goto answer agent
+                        agent = "answer_agent"
 
                     elif agent == "cost_agent":
                         # Call the cost agent with the query
@@ -98,11 +99,9 @@ class IntentAgent:
                         return cost_agent.process_cost()
                     
                     elif agent == "answer_agent":
-                        # Call the answer agent with the query
+                        
                         answer_agent = AnswerAgent(query, agent_response)
                         answer_response = answer_agent.process_answer()
-
-                        # print("Answer Agent Response: ", answer_response)
 
                         if answer_response["status"] == "success":
                             isProcessing = False

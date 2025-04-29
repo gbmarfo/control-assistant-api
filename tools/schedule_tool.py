@@ -68,3 +68,14 @@ SCHEDULE_TOOLS = [
         "strict": True
     }
 ]
+
+
+def get_required_parameters(tool_name):
+    for tool in SCHEDULE_TOOLS:
+        if tool["function"]["name"] == tool_name:
+            return tool["function"]["parameters"].get("required", [])
+    return []
+
+# Example usage:
+required_params = get_required_parameters("0220X_schedule_variance_summary")
+print(required_params)  # Output: ['project', 'period', 'piepccc']
